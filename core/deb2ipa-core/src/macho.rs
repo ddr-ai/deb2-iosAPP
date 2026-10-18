@@ -1,5 +1,6 @@
 use crate::classifier::SUBSTRATE_SYMBOLS;
 use goblin::Object;
+use goblin::mach::Mach;
 
 #[derive(Debug, Clone, Default)]
 pub struct BinaryScan {
@@ -18,6 +19,18 @@ fn contains_bytes(haystack: &[u8], needle: &[u8]) -> bool {
     haystack.windows(needle.len()).any(|w| w == needle)
 }
 
+/// Human-readable name for a goblin cputype value.
+fn cpu_name(cputype: u32) -> String {
+    match cputype {
+        0x0100000C => "arm64".to_string(),
+        0x0100000F => "arm64e".to_string(),
+        0x0000000C => "arm".to_string(),
+        0x01000007 => "x86_64".to_string(),
+        0x00000007 => "x86".to_string(),
+        other => format!("cpu-{other:x}"),
+    }
+}
+
 /// Scan file bytes: Mach-O vs ELF, architectures, load commands, and any
 /// Substrate symbols that would make the package un-runnable on stock iOS.
 pub fn scan(bytes: &[u8]) -> Option<BinaryScan> {
@@ -25,12 +38,19 @@ pub fn scan(bytes: &[u8]) -> Option<BinaryScan> {
     match obj {
         Object::Mach(mach) => {
             let mut scan = BinaryScan { macho: true, ..Default::default() };
-            for arch in mach.iter_arches().flatten() {
-                scan.architectures.push(format!("{:?}", arch.cputype));
-            }
-            for (_, exe) in mach.iter_exes() {
-                scan.linked_libraries.extend(exe.libs.iter().map(|l| l.to_string()));
-                scan.rpaths.extend(exe.rpaths.iter().map(|r| r.to_string()));
+            match mach {
+                Mach::Binary(exe) => {
+                    scan.architectures.push(cpu_name(exe.header.cputype));
+                    scan.linked_libraries.extend(exe.libs.iter().map(|l| l.to_string()));
+                    scan.rpaths.extend(exe.rpaths.iter().map(|r| r.to_string()));
+                }
+                Mach::Fat(multi) => {
+                    for arch in multi.iter_arches().flatten() {
+                        scan.architectures.push(cpu_name(arch.cputype()));
+                    }
+                    // TODO(v1): descend per slice and collect each MachO's
+                    // libs/rpaths for the dependency graph.
+                }
             }
             for sym in SUBSTRATE_SYMBOLS {
                 // v0: naive byte scan; v1 walks symbol tables.

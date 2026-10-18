@@ -12,11 +12,15 @@ crate-type = ["staticlib", "lib"]
 [dependencies]
 goblin = "0.9"
 tar = "0.4"
-xz2 = "0.1"
-zstd = "0.13"
-flate2 = "1"
+lzma-rs = "0.3"
+ruzstd = "0.7"
+flate2 = { version = "1", default-features = false, features = ["rust_backend"] }
 ar = "0.9"
 plist = "1"
 serde = { version = "1", features = ["derive"] }
 thiserror = "2"
 log = "0.4"
+
+[dev-dependencies]
+tar = "0.4"
+flate2 = { version = "1", default-features = false, features = ["rust_backend"] }

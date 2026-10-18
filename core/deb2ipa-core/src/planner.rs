@@ -46,9 +46,18 @@ pub fn default_bundle_id(package: &str, prefix: &str) -> String {
 }
 
 /// Apple marketing versions are dotted numeric triples (x.y.z).
+/// Debian epochs ("2:1.0~rc1") and revisions are stripped first.
 pub fn sanitize_version(raw: &str) -> String {
-    let mut nums: Vec<String> = raw
-        .split(|c: char| !c.is_ascii_digit())
+    // Drop the epoch: everything before the last ':' is packaging metadata.
+    let raw = raw.rsplit(':').next().unwrap_or(raw);
+    // Keep only the leading dotted-numeric run; drop debian suffixes
+    // ("~rc1", "-4", "+deb12") entirely.
+    let numeric: String = raw
+        .chars()
+        .take_while(|c| c.is_ascii_digit() || *c == '.')
+        .collect();
+    let mut nums: Vec<String> = numeric
+        .split('.')
         .filter(|s| !s.is_empty())
         .map(|s| s.chars().take(3).collect())
         .take(3)

@@ -37,12 +37,17 @@ jobs:
       - name: Generate Xcode project
         run: xcodegen generate --spec ios/project.yml
 
-      - name: App tests (iPhone 16 simulator)
+      - name: App tests (first available iPhone simulator)
         run: |
+          DEVICE=$(xcrun simctl list devices available \
+            | grep -m1 "iPhone" \
+            | sed -E "s/^[^A-Za-z]*//" \
+            | sed -E "s/ \([0-9A-Fa-f-]{36}\).*$//")
+          echo "Using simulator: ${DEVICE}"
           xcodebuild test \
             -project ios/Deb2IPA.xcodeproj \
             -scheme Deb2IPA \
-            -destination 'platform=iOS Simulator,name=iPhone 16'
+            -destination "platform=iOS Simulator,name=${DEVICE}"
 
       - name: Archive (unsigned — real signing happens at sideload time)
         run: |

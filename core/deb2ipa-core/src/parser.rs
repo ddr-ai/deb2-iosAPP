@@ -1,5 +1,5 @@
 use std::fs::File;
-use std::io::{BufReader, Read};
+use std::io::{BufReader, Cursor as IoCursor, Read};
 use std::path::Path;
 use thiserror::Error;
 
@@ -79,6 +79,17 @@ pub struct DebArchive {
     pub total_data_size: u64,
 }
 
+/// Normalize a data.tar entry path (e.g. "./usr/lib/libfoo.dylib") to its
+/// absolute install path ("/usr/lib/libfoo.dylib"). Returns None for root
+/// directory markers.
+fn install_path(raw: &str) -> Option<String> {
+    let p = raw.strip_prefix("./").unwrap_or(raw);
+    if p.is_empty() || p == "." || p == "/" {
+        return None;
+    }
+    Some(if p.starts_with('/') { p.to_string() } else { format!("/{p}") })
+}
+
 fn member_bytes<R: Read>(entry: &mut ar::Entry<R>) -> std::io::Result<Vec<u8>> {
     let mut out = Vec::new();
     entry.read_to_end(&mut out)?;
@@ -87,13 +98,23 @@ fn member_bytes<R: Read>(entry: &mut ar::Entry<R>) -> std::io::Result<Vec<u8>> {
 
 fn decoded(name: &str, bytes: Vec<u8>) -> Result<Box<dyn Read>, ParseError> {
     if name.ends_with(".gz") {
-        Ok(Box::new(flate2::read::GzDecoder::new(bytes)))
+        // Pure-Rust gzip decode (flate2 rust_backend).
+        Ok(Box::new(flate2::read::GzDecoder::new(IoCursor::new(bytes))))
     } else if name.ends_with(".xz") {
-        Ok(Box::new(xz2::read::XzDecoder::new(bytes)))
+        // Pure-Rust xz decode (lzma-rs).
+        let mut out = Vec::new();
+        lzma_rs::xz_decompress(&mut bytes.as_slice(), &mut out)
+            .map_err(|e| ParseError::InvalidDeb(format!("xz decode failed: {e}")))?;
+        Ok(Box::new(IoCursor::new(out)))
     } else if name.ends_with(".zst") {
-        Ok(Box::new(zstd::Decoder::new(bytes)?))
+        // Pure-Rust zstd decode (ruzstd).
+        let mut out = Vec::new();
+        let mut decoder = ruzstd::StreamingDecoder::new(IoCursor::new(bytes))
+            .map_err(|e| ParseError::InvalidDeb(format!("zstd decode failed: {e}")))?;
+        decoder.read_to_end(&mut out)?;
+        Ok(Box::new(IoCursor::new(out)))
     } else if name.ends_with(".tar") {
-        Ok(Box::new(bytes))
+        Ok(Box::new(IoCursor::new(bytes)))
     } else {
         Err(ParseError::UnsupportedCompression(name.to_string()))
     }
@@ -110,7 +131,8 @@ pub fn inspect(path: &Path) -> Result<DebArchive, ParseError> {
     let mut entries: Vec<DataEntry> = Vec::new();
     let mut total_data_size = 0u64;
 
-    while let Some(entry) = archive.next_entry()? {
+    while let Some(entry) = archive.next_entry() {
+        let mut entry = entry?;
         let name = String::from_utf8_lossy(entry.header().identifier()).to_string();
         if name == "debian-binary" {
             continue;
@@ -132,10 +154,10 @@ pub fn inspect(path: &Path) -> Result<DebArchive, ParseError> {
             let mut tar = tar::Archive::new(decoded(&name, bytes)?);
             for e in tar.entries()? {
                 let e = e?;
-                let p = e.header().path()?.to_string_lossy().to_string();
-                if p == "./" || p == "." {
+                let raw = e.header().path()?.to_string_lossy().to_string();
+                let Some(p) = install_path(&raw) else {
                     continue;
-                }
+                };
                 let header = e.header();
                 entries.push(DataEntry {
                     path: p,
