@@ -1,0 +1,92 @@
+name: Build Deb2IPA
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  schedule:
+    - cron: "0 4 * * *"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install host tools
+        run: brew install xcodegen ldid
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios,aarch64-apple-ios-sim
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: core
+
+      - name: Core unit tests (host)
+        run: cargo test --release --manifest-path core/Cargo.toml
+
+      - name: Build Rust core (XCFramework)
+        run: bash scripts/make-xcframework.sh
+
+      - name: Generate Xcode project
+        run: xcodegen generate --spec ios/project.yml
+
+      - name: App tests (iPhone 16 simulator)
+        run: |
+          xcodebuild test \
+            -project ios/Deb2IPA.xcodeproj \
+            -scheme Deb2IPA \
+            -destination 'platform=iOS Simulator,name=iPhone 16'
+
+      - name: Archive (unsigned — real signing happens at sideload time)
+        run: |
+          xcodebuild archive \
+            -project ios/Deb2IPA.xcodeproj \
+            -scheme Deb2IPA \
+            -destination 'generic/platform=iOS' \
+            -archivePath build/Deb2IPA.xcarchive \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO
+
+      - name: Package IPA (pseudo-signed so it opens in SideStore/Sideloadly)
+        run: |
+          mkdir -p build/Payload
+          cp -R "build/Deb2IPA.xcarchive/Products/Applications/Deb2IPA.app" build/Payload/
+          find build/Payload -name "*.dylib" -exec ldid -S {} \;
+          ldid -S ios/Deb2IPA/Entitlements.plist build/Payload/Deb2IPA.app/Deb2IPA
+          if [ -d build/Payload/Deb2IPA.app/PlugIns/Deb2IPAShare.appex ]; then
+            ldid -S build/Payload/Deb2IPA.app/PlugIns/Deb2IPAShare.appex/Deb2IPAShare
+          fi
+          cd build && zip -qry Deb2IPA.ipa Payload
+          shasum -a 256 Deb2IPA.ipa | tee Deb2IPA.ipa.sha256
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Deb2IPA-ipa
+          path: |
+            build/Deb2IPA.ipa
+            build/Deb2IPA.ipa.sha256
+
+      - name: Release (tags)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            build/Deb2IPA.ipa
+            build/Deb2IPA.ipa.sha256
+          generate_release_notes: true
+
+      - name: Nightly release
+        if: github.event_name == 'schedule'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag: nightly
+          files: |
+            build/Deb2IPA.ipa
+            build/Deb2IPA.ipa.sha256

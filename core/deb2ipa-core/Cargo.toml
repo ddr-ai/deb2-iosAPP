@@ -1,0 +1,22 @@
+[package]
+name = "deb2ipa-core"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "On-device .deb to .ipa conversion engine for the Deb2IPA iOS app"
+
+[lib]
+name = "deb2ipa_core"
+crate-type = ["staticlib", "lib"]
+
+[dependencies]
+goblin = "0.9"
+tar = "0.4"
+xz2 = "0.1"
+zstd = "0.13"
+flate2 = "1"
+ar = "0.9"
+plist = "1"
+serde = { version = "1", features = ["derive"] }
+thiserror = "2"
+log = "0.4"

@@ -1,0 +1,76 @@
+name: Deb2IPA
+options:
+  bundleIdPrefix: com.ddrai
+  deploymentTarget:
+    iOS: "16.0"
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    CODE_SIGN_IDENTITY: "-"
+    DEVELOPMENT_TEAM: ""
+targets:
+  Deb2IPA:
+    type: application
+    platform: iOS
+    sources:
+      - path: Deb2IPA/Sources
+    dependencies:
+      - target: Deb2IPAShare
+      - xcframework:
+          - ../build/xcframework/Deb2IPACore.xcframework
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.ddrai.deb2ipa
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        SWIFT_OBJC_BRIDGING_HEADER: Deb2IPA/Sources/Bridging-Header.h
+        HEADER_SEARCH_PATHS: "$(SRCROOT)/../core/deb2ipa-core/include"
+        CODE_SIGN_ENTITLEMENTS: Deb2IPA/Entitlements.plist
+    info:
+      path: Deb2IPA/Info.plist
+      properties:
+        CFBundleDisplayName: Deb2IPA
+        UILaunchScreen: {}
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+  Deb2IPAShare:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: ShareExtension/Sources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.ddrai.deb2ipa.share
+        SKIP_INSTALL: "YES"
+    info:
+      path: ShareExtension/Info.plist
+      properties:
+        CFBundleDisplayName: Deb2IPA Share
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.share-services
+          NSExtensionPrincipalClass: "$(PRODUCT_MODULE_NAME).ShareViewController"
+          NSExtensionAttributes:
+            NSExtensionActivationRule: TRUEPREDICATE
+  Deb2IPATests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: Deb2IPATests
+    dependencies:
+      - target: Deb2IPA
+    settings:
+      base:
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Deb2IPA.app/Deb2IPA"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+schemes:
+  Deb2IPA:
+    build:
+      targets:
+        Deb2IPA: all
+    test:
+      targets:
+        - Deb2IPATests

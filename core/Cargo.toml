@@ -1,0 +1,7 @@
+[workspace]
+resolver = "2"
+members = ["deb2ipa-core"]
+
+[profile.release]
+lto = true
+strip = true

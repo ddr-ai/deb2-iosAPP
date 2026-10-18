@@ -1,0 +1,18 @@
+# Build outputs
+build/
+DerivedData/
+*.ipa
+*.xcarchive
+
+# Rust
+core/target/
+
+# XcodeGen-generated files (regenerate with: xcodegen generate --spec ios/project.yml)
+ios/Deb2IPA.xcodeproj
+ios/Deb2IPA/Info.plist
+ios/ShareExtension/Info.plist
+
+# Xcode noise
+xcuserdata/
+*.xcuserstate
+.DS_Store
