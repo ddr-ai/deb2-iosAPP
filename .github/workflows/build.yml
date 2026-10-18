@@ -39,15 +39,46 @@ jobs:
 
       - name: App tests (first available iPhone simulator)
         run: |
-          DEVICE=$(xcrun simctl list devices available \
-            | grep -m1 "iPhone" \
-            | sed -E "s/^[^A-Za-z]*//" \
-            | sed -E "s/ \([0-9A-Fa-f-]{36}\).*$//")
-          echo "Using simulator: ${DEVICE}"
-          xcodebuild test \
+          {
+            echo "### Available simulator destinations"
+            echo '~~~'
+            xcodebuild -project ios/Deb2IPA.xcodeproj -scheme Deb2IPA -showdestinations 2>&1 | tail -n 40
+            echo '~~~'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          DEST=""
+          ID=$(xcodebuild -project ios/Deb2IPA.xcodeproj -scheme Deb2IPA -showdestinations 2>/dev/null \
+            | grep -m1 "platform:iOS Simulator" \
+            | grep -oE 'id:[0-9A-Fa-f-]{36}' | cut -d: -f2 || true)
+          if [ -z "$ID" ]; then
+            ID=$(xcrun simctl list devices available \
+              | grep -m1 "iPhone" \
+              | grep -oE '[0-9A-Fa-f-]{36}' || true)
+          fi
+          if [ -n "$ID" ]; then
+            DEST="platform=iOS Simulator,id=$ID"
+          else
+            DEST="platform=iOS Simulator"
+          fi
+          echo "Testing on destination: $DEST"
+
+          mkdir -p build
+          set -o pipefail
+          if xcodebuild test \
             -project ios/Deb2IPA.xcodeproj \
             -scheme Deb2IPA \
-            -destination "platform=iOS Simulator,name=${DEVICE}"
+            -destination "$DEST" \
+            2>&1 | tee build/xcodebuild-test.log; then
+            echo "All tests passed."
+          else
+            {
+              echo "### xcodebuild test failure (last 250 lines)"
+              echo '~~~'
+              tail -n 250 build/xcodebuild-test.log
+              echo '~~~'
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
 
       - name: Archive (unsigned — real signing happens at sideload time)
         run: |

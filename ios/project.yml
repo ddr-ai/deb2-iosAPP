@@ -17,6 +17,8 @@ targets:
     dependencies:
       - target: Deb2IPAShare
       - framework: ../build/xcframework/Deb2IPACore.xcframework
+        embed: false
+        codeSign: false
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.ddrai.deb2ipa
@@ -65,6 +67,9 @@ targets:
       base:
         TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Deb2IPA.app/Deb2IPA"
         BUNDLE_LOADER: "$(TEST_HOST)"
+    info:
+      path: Deb2IPATests/Info.plist
+      properties: {}
 schemes:
   Deb2IPA:
     build:
