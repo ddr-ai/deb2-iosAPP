@@ -1,8 +1,10 @@
 # deb2-iosAPP — Deb2IPA
 
+![CI](https://github.com/ddr-ai/deb2-iosAPP/actions/workflows/build.yml/badge.svg)
+
 Convert Debian (.deb) packages into sideloadable .ipa files — entirely on-device. No Mac, no jailbreak. Deb2IPA is a native SwiftUI iOS app backed by a Rust conversion core, and it is itself built and distributed as a sideloadable .ipa by GitHub Actions.
 
-Status: early scaffold. Pipeline stages are stubbed with clear TODOs; the architecture, project generation and CI are real.
+Status: early scaffold — but the pipeline is fully green. Every push to main runs the Rust core tests, builds the iOS XCFramework, runs the app tests on an iPhone simulator, archives unsigned, and publishes a pseudo-signed Deb2IPA.ipa artifact. The in-app conversion flow is still stubbed with clear TODOs; the architecture, project generation and CI are real and working.
 
 ## Features (target)
 - On-device .deb parsing (ar + tar, gzip/xz/zstd) — pure library calls, no shell, no external tools
@@ -20,8 +22,9 @@ Status: early scaffold. Pipeline stages are stubbed with clear TODOs; the archit
 
 ## Build locally
 1. Install Xcode, Rust, XcodeGen, ldid (brew install xcodegen ldid)
-2. scripts/make-xcframework.sh
-3. cd ios && xcodegen generate && open Deb2IPA.xcodeproj
+2. rustup target add aarch64-apple-ios aarch64-apple-ios-sim
+3. scripts/make-xcframework.sh
+4. cd ios && xcodegen generate && open Deb2IPA.xcodeproj
 
 ## CI and download
 Every push uploads a Deb2IPA-ipa artifact; tags publish GitHub Releases; a nightly cron keeps a rolling nightly release. The CI-built IPA is pseudo-signed (ldid); the real Apple ID signature is applied at sideload time by SideStore/AltStore/Sideloadly. No Apple secrets live in CI.
