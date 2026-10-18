@@ -30,27 +30,42 @@ struct ConvertFlowView: View {
                 case .converting:
                     ProgressView("Converting…")
                 case .result:
-                    // TODO(v1): gate checklist + share-sheet hand-off to SideStore
-                    EmptyView()
+                    ResultView(debURL: debURL) {
+                        phase = .pick
+                    }
                 }
             }
             .navigationTitle("Deb2IPA")
             .fileImporter(
                 isPresented: $showImporter,
-                allowedContentTypes: [debType],
+                allowedContentTypes: ConvertFlowView.debTypes,
                 allowsMultipleSelection: false
             ) { result in
-                if case .success(let urls) = result, let url = urls.first {
-                    debURL = url
-                    phase = .analyzing
-                    // TODO(v1): ConvertEngine.analyze(url)
+                switch result {
+                case .success(let urls):
+                    if let url = urls.first {
+                        debURL = url
+                        // TODO(v1): security-scoped read + ConvertEngine.analyze(url)
+                        phase = .result
+                    }
+                case .failure(let error):
+                    print("File import failed: \(error)")
                 }
+            }
+            .onOpenURL { url in
+                // A .deb opened from the Files app lands here (the type is
+                // declared via CFBundleDocumentTypes / UTImportedTypeDeclarations
+                // in Info.plist, so iOS offers Deb2IPA for .deb files).
+                debURL = url
+                phase = .result
             }
         }
     }
 
-    private var debType: UTType {
-        UTType(filenameExtension: "deb") ?? .data
+    /// The .deb document type, declared in Info.plist so both the system
+    /// document picker and the Files app recognise Debian packages.
+    static var debTypes: [UTType] {
+        [UTType("org.debian.debian-package") ?? UTType(filenameExtension: "deb") ?? .data]
     }
 }
 
@@ -71,6 +86,31 @@ struct PickView: View {
             Text("Core engine " + coreVersion)
                 .font(.footnote)
                 .foregroundStyle(.secondary)
+        }
+        .padding()
+    }
+}
+
+struct ResultView: View {
+    let debURL: URL?
+    let onDone: () -> Void
+
+    var body: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "doc.badge.gearshape")
+                .font(.system(size: 48))
+                .foregroundStyle(.tint)
+            Text("Package received")
+                .font(.headline)
+            Text(debURL?.lastPathComponent ?? "unknown")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            Text("The conversion pipeline lands in v1. The Rust core already inspects and classifies debs — the next milestone wires this screen to it.")
+                .font(.footnote)
+                .multilineTextAlignment(.center)
+                .foregroundStyle(.secondary)
+            Button("Pick another", action: onDone)
+                .buttonStyle(.bordered)
         }
         .padding()
     }

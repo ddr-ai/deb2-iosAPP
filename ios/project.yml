@@ -38,6 +38,22 @@ targets:
           - UIInterfaceOrientationPortrait
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
+        LSSupportsOpeningDocumentsInPlace: false
+        CFBundleDocumentTypes:
+          - CFBundleTypeName: Debian Package
+            CFBundleTypeRole: Viewer
+            LSHandlerRank: Alternate
+            LSItemContentTypes:
+              - org.debian.debian-package
+        UTImportedTypeDeclarations:
+          - UTTypeIdentifier: org.debian.debian-package
+            UTTypeDescription: Debian Package
+            UTTypeConformsTo:
+              - public.data
+              - public.archive
+            UTTypeTagSpecification:
+              public.filename-extension:
+                - deb
   Deb2IPAShare:
     type: app-extension
     platform: iOS
