@@ -16,7 +16,7 @@ targets:
       - path: Deb2IPA/Sources
     dependencies:
       - target: Deb2IPAShare
-      - xcframework: ../build/xcframework/Deb2IPACore.xcframework
+      - framework: ../build/xcframework/Deb2IPACore.xcframework
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.ddrai.deb2ipa
