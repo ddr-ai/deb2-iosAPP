@@ -91,15 +91,32 @@ jobs:
 
       - name: Package IPA (pseudo-signed so it opens in SideStore/Sideloadly)
         run: |
-          mkdir -p build/Payload
-          cp -R "build/Deb2IPA.xcarchive/Products/Applications/Deb2IPA.app" build/Payload/
-          find build/Payload -name "*.dylib" -exec ldid -S {} \;
-          ldid -S ios/Deb2IPA/Entitlements.plist build/Payload/Deb2IPA.app/Deb2IPA
-          if [ -d build/Payload/Deb2IPA.app/PlugIns/Deb2IPAShare.appex ]; then
-            ldid -S build/Payload/Deb2IPA.app/PlugIns/Deb2IPAShare.appex/Deb2IPAShare
+          # ldid pseudo-signs (fake signature). If entitlements are ever added,
+          # attach the file to the flag: ldid -Sios/Deb2IPA/Entitlements.plist <binary>
+          LOG="$RUNNER_TEMP/package-ipa.log"
+          set -o pipefail
+          if {
+            set -x
+            mkdir -p build/Payload \
+            && cp -R "build/Deb2IPA.xcarchive/Products/Applications/Deb2IPA.app" build/Payload/ \
+            && find build/Payload -name "*.dylib" -exec ldid -S {} \; \
+            && ldid -S build/Payload/Deb2IPA.app/Deb2IPA \
+            && { [ ! -d build/Payload/Deb2IPA.app/PlugIns/Deb2IPAShare.appex ] \
+                 || ldid -S build/Payload/Deb2IPA.app/PlugIns/Deb2IPAShare.appex/Deb2IPAShare; } \
+            && cd build \
+            && zip -qry Deb2IPA.ipa Payload \
+            && shasum -a 256 Deb2IPA.ipa | tee Deb2IPA.ipa.sha256
+          } 2>&1 | tee "$LOG"; then
+            echo "IPA packaged."
+          else
+            {
+              echo "### Package IPA failure (last 150 lines)"
+              echo '~~~'
+              tail -n 150 "$LOG"
+              echo '~~~'
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
           fi
-          cd build && zip -qry Deb2IPA.ipa Payload
-          shasum -a 256 Deb2IPA.ipa | tee Deb2IPA.ipa.sha256
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
