@@ -39,6 +39,7 @@ targets:
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
         LSSupportsOpeningDocumentsInPlace: false
+        UIFileSharingEnabled: true
         CFBundleDocumentTypes:
           - CFBundleTypeName: Debian Package
             CFBundleTypeRole: Viewer
