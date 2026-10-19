@@ -13,6 +13,7 @@ Status: early scaffold — but the pipeline is fully green. Every push to main r
 - Info.plist repair/synthesis + icon generation
 - Pre-flight validation gates (structure, plist, signature, load commands, sandbox): no IPA is exported unless every gate passes
 - Hand-off signing: export the finished .ipa and open it in SideStore / AltStore / Sideloadly, which apply your Apple ID signature
+- Import .deb files from the Files app or directly from your Google Drive
 
 ## Repo layout
 - core/ — Rust workspace; deb2ipa-core (deb parsing, classification, Mach-O editing, validation, C FFI)
@@ -33,6 +34,16 @@ Every push uploads a Deb2IPA-ipa artifact; tags publish GitHub Releases; a night
 1. Download Deb2IPA.ipa from Releases (or the latest CI artifact)
 2. Open it with SideStore/AltStore on-device (or sideload via USB with Sideloadly)
 3. Launch. Free Apple IDs sign for 7 days; SideStore/AltStore refresh automatically on-device
+
+## Google Drive import (one-time Google Cloud setup)
+Deb2IPA can sign in with your Google account and browse your Drive for .deb files. Google requires every OAuth client to be registered, so a one-time setup is needed:
+1. Create a project at console.cloud.google.com and enable the Google Drive API for it
+2. Configure the OAuth consent screen (user type External) and add your own Google account as a test user
+3. Create credentials: OAuth client ID, application type iOS, bundle ID com.ddrai.deb2ipa
+4. Copy the client ID (it ends in .apps.googleusercontent.com) into ios/Deb2IPA/Sources/GoogleDriveConfig.swift, and update the reversed client ID URL scheme in ios/project.yml (com.googleusercontent.apps.<client id>)
+5. Rebuild (or let CI rebuild) and reinstall the app
+
+Until this setup is done, the Drive button shows a configuration error — the Files app import keeps working meanwhile. The app only requests the read-only drive scope; it can list and download .deb files, nothing else.
 
 ## Honest limitations
 - Substrate tweaks/hooks cannot run on non-jailbroken iOS (no process injection). Deb2IPA detects and explains instead of shipping broken IPAs.
