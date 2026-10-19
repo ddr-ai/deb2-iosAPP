@@ -63,9 +63,8 @@ targets:
         CFBundleURLTypes:
           - CFBundleURLName: GoogleSignIn
             CFBundleURLSchemes:
-              # Reversed client ID of your Google OAuth iOS client:
-              # com.googleusercontent.apps.<your-client-id>
-              - com.googleusercontent.apps.REPLACE_WITH_GOOGLE_IOS_CLIENT_ID
+              # Reversed client ID of the Google OAuth iOS client
+              - com.googleusercontent.apps.109123923843-jfqi949v87ok6bcoi582hgovll8b53lk
   Deb2IPAShare:
     type: app-extension
     platform: iOS
