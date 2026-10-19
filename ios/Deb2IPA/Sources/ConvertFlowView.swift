@@ -13,7 +13,6 @@ struct ConvertFlowView: View {
     @State private var phase: FlowPhase = .pick
     @State private var debURL: URL?
     @State private var showImporter = false
-    @State private var showDrivePicker = false
 
     var body: some View {
         NavigationStack {
@@ -22,8 +21,7 @@ struct ConvertFlowView: View {
                 case .pick:
                     PickView(
                         coreVersion: ConvertEngine.coreVersion,
-                        onPickLocal: { showImporter = true },
-                        onPickDrive: { showDrivePicker = true }
+                        onPickLocal: { showImporter = true }
                     )
                 case .analyzing:
                     ProgressView("Analyzing package…")
@@ -62,12 +60,6 @@ struct ConvertFlowView: View {
                 debURL = url
                 phase = .result
             }
-            .sheet(isPresented: $showDrivePicker) {
-                DrivePickerView { url in
-                    debURL = url
-                    phase = .result
-                }
-            }
         }
     }
 
@@ -81,7 +73,6 @@ struct ConvertFlowView: View {
 struct PickView: View {
     let coreVersion: String
     let onPickLocal: () -> Void
-    let onPickDrive: () -> Void
 
     var body: some View {
         VStack(spacing: 24) {
@@ -91,16 +82,10 @@ struct PickView: View {
             Text("Drop in a .deb, get out an installable .ipa")
                 .font(.headline)
                 .multilineTextAlignment(.center)
-            VStack(spacing: 12) {
-                Button(action: onPickDrive) {
-                    Label("Choose from Google Drive", systemImage: "externaldrive.badge.icloud")
-                }
-                .buttonStyle(.borderedProminent)
-                Button(action: onPickLocal) {
-                    Label("Choose from Files", systemImage: "folder")
-                }
-                .buttonStyle(.bordered)
+            Button(action: onPickLocal) {
+                Label("Choose from Files", systemImage: "folder")
             }
+            .buttonStyle(.borderedProminent)
             Text("Core engine " + coreVersion)
                 .font(.footnote)
                 .foregroundStyle(.secondary)

@@ -1,10 +1,3 @@
-import Foundation
-
-/// Google OAuth iOS client (bundle ID com.ddrai.deb2ipa).
-/// Registered in Google Cloud Console; see README "Google Drive import".
-enum GoogleDriveConfig {
-    static let clientID = "109123923843-jfqi949v87ok6bcoi582hgovll8b53lk.apps.googleusercontent.com"
-
-    /// Read-only access to Google Drive.
-    static let driveScope = "https://www.googleapis.com/auth/drive.readonly"
-}
+// The Google Drive integration was removed in favour of the Files app import and the
+// browser-based web inspector. This file is inert and is deleted by a follow-up
+// commit; the inert comment only exists so every intermediate commit compiles.

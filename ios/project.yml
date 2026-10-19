@@ -8,10 +8,6 @@ settings:
     SWIFT_VERSION: "5.9"
     CODE_SIGN_IDENTITY: "-"
     DEVELOPMENT_TEAM: ""
-packages:
-  GoogleSignIn:
-    url: https://github.com/google/GoogleSignIn-iOS
-    from: 10.0.0
 targets:
   Deb2IPA:
     type: application
@@ -20,7 +16,6 @@ targets:
       - path: Deb2IPA/Sources
     dependencies:
       - target: Deb2IPAShare
-      - package: GoogleSignIn
       - framework: ../build/xcframework/Deb2IPACore.xcframework
         embed: false
         codeSign: false
@@ -60,11 +55,6 @@ targets:
             UTTypeTagSpecification:
               public.filename-extension:
                 - deb
-        CFBundleURLTypes:
-          - CFBundleURLName: GoogleSignIn
-            CFBundleURLSchemes:
-              # Reversed client ID of the Google OAuth iOS client
-              - com.googleusercontent.apps.109123923843-jfqi949v87ok6bcoi582hgovll8b53lk
   Deb2IPAShare:
     type: app-extension
     platform: iOS
