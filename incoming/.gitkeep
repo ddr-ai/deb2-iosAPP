@@ -1,0 +1,4 @@
+# Drop .deb files here via GitHub's web upload (Code → incoming → Add file → Upload files).
+# The "Build unsigned IPA" workflow converts them into certificate-free .ipas
+# published to the rolling web-build release. This folder must exist for the
+# upload page to target it, so this placeholder file stays.

@@ -19,9 +19,12 @@ Status: early scaffold — but the pipeline is fully green. Every push to main r
 - core/ — Rust workspace; deb2ipa-core (deb parsing, classification, Mach-O editing, validation, C FFI)
 - ios/ — SwiftUI app + share extension (XcodeGen spec in project.yml; the .xcodeproj is generated, not committed)
 - web/ — browser-based .deb inspector, published to GitHub Pages (static, no build step)
+- incoming/ — drop .deb files here via GitHub's web upload to build unsigned .ipas
 - scripts/make-xcframework.sh — builds the Rust core for iOS device + simulator and packages Deb2IPACore.xcframework
+- scripts/web-ipa/ — server-side honest conversion scripts used by the builder workflow
 - .github/workflows/build.yml — CI: core tests, app tests, unsigned archive, pseudo-signed Deb2IPA.ipa, artifacts + releases
 - .github/workflows/pages.yml — deploys web/ to GitHub Pages
+- .github/workflows/build-ipa.yml — converts .debs dropped into incoming/ into unsigned .ipas on a rolling web-build release
 
 ## Build locally
 1. Install Xcode, Rust, XcodeGen, ldid (brew install xcodegen ldid)
@@ -41,6 +44,14 @@ Every push uploads a Deb2IPA-ipa artifact; tags publish GitHub Releases; a night
 https://ddr-ai.github.io/deb2-iosAPP/ runs the same honest-verdict analysis in any phone browser — iOS included. Pick a .deb from the local file picker (on iPhone that is the Files app, including iCloud Drive) and get: package metadata, the ar/tar structure, a full file listing with per-file download, and a classification verdict (ARM64 app bundle / MobileSubstrate tweak / Linux ELF / data-only package). Everything runs client-side — no file is ever uploaded. gzip members decode with the browser's native DecompressionStream; xz/zstd/bzip2 members fall back to a libarchive.js WASM helper loaded from a CDN (jsDelivr, unpkg as backup).
 
 One-time setup: in the repo, go to Settings → Pages → Build and deployment → Source: "GitHub Actions". The pages workflow then publishes web/ on every push that touches it, and any time via manual dispatch from the Actions tab.
+
+## Build an unsigned .ipa via GitHub Actions
+Want more than the verdict? Hand the package to the repo's builder — no server, no credentials in the browser:
+
+1. Upload a .deb to the [incoming/](incoming/) folder on GitHub (Code → incoming → Add file → Upload files — or directly: https://github.com/ddr-ai/deb2-iosAPP/upload/main/incoming). On iPhone, the upload page opens the Files app.
+2. The **Build unsigned IPA** workflow extracts the payload and re-verifies it server-side with the same honest rules (ARM64 .app bundle → convert; Linux ELF / MobileSubstrate tweak / non-ARM64 Mac build / data-only → reject with a report in the run summary and the unsigned-ipas artifact).
+3. Convertible packages are published as certificate-free .ipas on the rolling [web-build release](https://github.com/ddr-ai/deb2-iosAPP/releases/tag/web-build) — nothing is signed in CI; SideStore/AltStore/Sideloadly apply your own Apple ID signature at install time.
+4. The workflow can also be dispatched manually from the Actions tab with a direct .deb URL (handy for packages already hosted on a repo server).
 
 ## Honest limitations
 - Substrate tweaks/hooks cannot run on non-jailbroken iOS (no process injection). Deb2IPA detects and explains instead of shipping broken IPAs.

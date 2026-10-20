@@ -1,0 +1,57 @@
+name: Build unsigned IPA from incoming .deb
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'incoming/**'
+      - '.github/workflows/build-ipa.yml'
+  workflow_dispatch:
+    inputs:
+      deb_url:
+        description: 'Direct URL to a .deb (optional, e.g. from a repo server)'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-ipa
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install extraction tools
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq xz-utils zstd binutils
+
+      - name: Convert packages
+        id: convert
+        env:
+          DEB_URL: ${{ inputs.deb_url }}
+        run: bash scripts/web-ipa/build-all.sh
+
+      - name: Upload IPAs and reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: unsigned-ipas
+          path: out/
+          if-nothing-found: ignore
+
+      - name: Publish IPAs to the web-build release
+        if: steps.convert.outputs.any == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash scripts/web-ipa/publish.sh
+
+      - name: Honest failure if nothing was convertible
+        if: steps.convert.outputs.any != 'true' && steps.convert.outputs.nothing != 'true'
+        run: |
+          echo "### Nothing to publish" >> $GITHUB_STEP_SUMMARY
+          echo "Every .deb in incoming/ was rejected honestly (Linux ELF payload, MobileSubstrate tweak, non-ARM64 Mac build, or no app bundle). See the per-package reports in the unsigned-ipas artifact above." >> $GITHUB_STEP_SUMMARY
+          exit 1
